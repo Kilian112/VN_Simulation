@@ -5,8 +5,8 @@ import {LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer} from 'recha
 // Constants
 // ─────────────────────────────────────────────
 
-const CANVAS_W = 900;
-const CANVAS_H = 560;
+const CANVAS_W = 1080;
+const CANVAS_H = 720;
 
 const NETWORK_PRESETS = {
     'Wi-Fi 6': {radius: 150, maxUsers: 20,  peakThroughput: 9600,    latency: 2,   type: 'wifi'},
@@ -359,7 +359,18 @@ export default function NetworkSimulation() {
     useEffect(() => {
         const canvas = canvasRef.current;
         if (!canvas) return;
+
+        // Match canvas buffer to physical pixels so it's as sharp as the SVG layer
+        const dpr = window.devicePixelRatio || 1;
+        const cssW = canvas.clientWidth;
+        const cssH = canvas.clientHeight;
+        canvas.width  = cssW * dpr;
+        canvas.height = cssH * dpr;
+
         const ctx = canvas.getContext('2d');
+        // Scale so drawing code can still use CANVAS_W × CANVAS_H coordinates
+        ctx.scale((cssW * dpr) / CANVAS_W, (cssH * dpr) / CANVAS_H);
+
         ctx.clearRect(0, 0, CANVAS_W, CANVAS_H);
         const {devices, stations} = snapshot;
         const stById = new Map(stations.map(s => [s.id, s]));
@@ -369,9 +380,19 @@ export default function NetworkSimulation() {
             if (d.connectedTo === null || d.state === 'rejected') continue;
             const s = stById.get(d.connectedTo);
             if (!s) continue;
+
+            // For cellular, end at the midpoint direction of the connected sector;
+            // for WiFi, end at the station center.
+            let endX = s.x, endY = s.y;
+            if (s.type === 'cellular' && d.connectedSector !== null) {
+                const midAngle = (d.connectedSector * 120 + 60) * Math.PI / 180;
+                endX = s.x + 14 * Math.cos(midAngle);
+                endY = s.y + 14 * Math.sin(midAngle);
+            }
+
             ctx.beginPath();
             ctx.moveTo(d.x, d.y);
-            ctx.lineTo(s.x, s.y);
+            ctx.lineTo(endX, endY);
             ctx.strokeStyle = s.color;
             ctx.globalAlpha = d.throttled ? 0.07 : 0.22;
             ctx.lineWidth   = 0.7;
@@ -560,6 +581,7 @@ export default function NetworkSimulation() {
                         {/* SVG layer — coverage areas + station icons/labels only */}
                         <svg
                             viewBox={`0 0 ${CANVAS_W} ${CANVAS_H}`}
+                            preserveAspectRatio="none"
                             className="w-full h-full absolute inset-0"
                             style={{background: 'radial-gradient(ellipse at 50% 40%, #0d1b2a 0%, #050c14 100%)'}}
                         >
