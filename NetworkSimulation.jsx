@@ -9,12 +9,12 @@ const CANVAS_W = 1080;
 const CANVAS_H = 720;
 
 const NETWORK_PRESETS = {
-    'Wi-Fi 6': {radius: 150, maxUsers: 20,  peakThroughput: 9600,    latency: 2,   type: 'wifi'},
-    'Wi-Fi 7': {radius: 175, maxUsers: 25,  peakThroughput: 46000,   latency: 1,   type: 'wifi'},
-    'Wi-Fi 8': {radius: 200, maxUsers: 30,  peakThroughput: 100000,  latency: 0.5, type: 'wifi'},
-    '4G':      {radius: 280, maxUsers: 60,  peakThroughput: 100,     latency: 30,  type: 'cellular'},
-    '5G':      {radius: 240, maxUsers: 120, peakThroughput: 20000,   latency: 5,   type: 'cellular'},
-    '6G':      {radius: 320, maxUsers: 180, peakThroughput: 1000000, latency: 0.1, type: 'cellular'},
+    'Wi-Fi 6': {radius: 45,   maxUsers: 100,  peakThroughput: 9600,    latency: 2,   type: 'wifi'},
+    'Wi-Fi 7': {radius: 45,   maxUsers: 200,  peakThroughput: 46000,   latency: 1,   type: 'wifi'},
+    'Wi-Fi 8': {radius: 50,   maxUsers: 300,  peakThroughput: 100000,  latency: 0.5, type: 'wifi'},
+    '4G':      {radius: 1600, maxUsers: 400,  peakThroughput: 100,     latency: 30,  type: 'cellular'},
+    '5G':      {radius: 500,  maxUsers: 1000, peakThroughput: 20000,   latency: 5,   type: 'cellular'},
+    '6G':      {radius: 300,  maxUsers: 10000,peakThroughput: 1000000, latency: 0.1, type: 'cellular'},
 };
 
 const SPEED_PX        = {slow: 25, medium: 70, fast: 160};
@@ -520,7 +520,7 @@ export default function NetworkSimulation() {
                         </SettingLabel>
 
                         <SettingLabel label={`Base Stations: ${stationCount}`}>
-                            <input type="range" min={1} max={5} value={stationCount}
+                            <input type="range" min={1} max={100} value={stationCount}
                                 onChange={e => setStationCount(+e.target.value)} className="w-full accent-blue-500" />
                         </SettingLabel>
 
