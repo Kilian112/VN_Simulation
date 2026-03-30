@@ -5,8 +5,22 @@ import {LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer} from 'recha
 // Constants
 // ─────────────────────────────────────────────
 
-const CANVAS_W = 1080;
-const CANVAS_H = 720;
+const CANVAS_PRESETS = {
+    '21" (1080×720)':   {w: 1080, h: 720},
+    '24" (1280×800)':   {w: 1280, h: 800},
+    '27" (1440×900)':   {w: 1440, h: 900},
+    '32" (1600×1000)':  {w: 1600, h: 1000},
+    'Ultrawide (1800×750)': {w: 1800, h: 750},
+};
+
+function detectCanvasPreset() {
+    const w = window.innerWidth;
+    if (w >= 2500) return 'Ultrawide (1800×750)';
+    if (w >= 2200) return '32" (1600×1000)';
+    if (w >= 1800) return '27" (1440×900)';
+    if (w >= 1400) return '24" (1280×800)';
+    return '21" (1080×720)';
+}
 
 const NETWORK_PRESETS = {
     'Wi-Fi 6': {radius: 45,   maxUsers: 100,  peakThroughput: 9600,    latency: 2,   type: 'wifi'},
@@ -61,13 +75,13 @@ function getDeviceColor(d) {
     return '#164e63'; // unconnected
 }
 
-function makeStations(count, presetKey) {
+function makeStations(count, presetKey, canvasW, canvasH) {
     const p       = NETWORK_PRESETS[presetKey];
     const palette = p.type === 'wifi' ? WIFI_COLORS : CELL_COLORS;
     const cols    = Math.ceil(Math.sqrt(count));
     const rows    = Math.ceil(count / cols);
-    const cellW   = CANVAS_W / cols;
-    const cellH   = CANVAS_H / rows;
+    const cellW   = canvasW / cols;
+    const cellH   = canvasH / rows;
     return Array.from({length: count}, (_, i) => {
         const col = i % cols;
         const row = Math.floor(i / cols);
@@ -86,7 +100,7 @@ function makeStations(count, presetKey) {
     });
 }
 
-function makeDevices(count, vrRatio) {
+function makeDevices(count, vrRatio, canvasW, canvasH) {
     return Array.from({length: count}, (_, i) => {
         const angle = Math.random() * Math.PI * 2;
         const isVR  = Math.random() < vrRatio;
@@ -98,8 +112,8 @@ function makeDevices(count, vrRatio) {
                           : 0; // VR uses vrBgLoad
         return {
             id:               i,
-            x:                Math.random() * CANVAS_W,
-            y:                Math.random() * CANVAS_H,
+            x:                Math.random() * canvasW,
+            y:                Math.random() * canvasH,
             vx:               Math.cos(angle),
             vy:               Math.sin(angle),
             deviceType:       isVR ? 'vr' : 'normal',
@@ -133,8 +147,13 @@ export default function NetworkSimulation() {
     const [vrBgLoad,     setVrBgLoad]     = useState(100);  // Mbps
     const [vrRatio,      setVrRatio]      = useState(0.3);  // 0–1
     const [simMult,      setSimMult]      = useState(1);
+    const [canvasPreset, setCanvasPreset] = useState(() => detectCanvasPreset());
     const [paused,       setPaused]       = useState(false);
     const [settingsOpen, setSettingsOpen] = useState(false);
+
+    const canvasSize = CANVAS_PRESETS[canvasPreset];
+    const CANVAS_W   = canvasSize.w;
+    const CANVAS_H   = canvasSize.h;
 
     const stationsRef     = useRef([]);
     const devicesRef      = useRef([]);
@@ -148,14 +167,14 @@ export default function NetworkSimulation() {
     const [metricsHistory, setMetricsHistory] = useState([]);
 
     const settingsRef = useRef({});
-    settingsRef.current = {networkType, moveSpeed, appDlSize, vrBgLoad, vrRatio, simMult};
+    settingsRef.current = {networkType, moveSpeed, appDlSize, vrBgLoad, vrRatio, simMult, CANVAS_W, CANVAS_H};
 
     const preset = NETWORK_PRESETS[networkType];
 
     // ── Init / reset ──
     const initSim = useCallback(() => {
-        stationsRef.current     = makeStations(stationCount, networkType);
-        devicesRef.current      = makeDevices(deviceCount, vrRatio);
+        stationsRef.current     = makeStations(stationCount, networkType, CANVAS_W, CANVAS_H);
+        devicesRef.current      = makeDevices(deviceCount, vrRatio, CANVAS_W, CANVAS_H);
         metricsHistRef.current  = [];
         metricsTimerRef.current = 0;
         setMetricsHistory([]);
@@ -163,13 +182,13 @@ export default function NetworkSimulation() {
             stations: stationsRef.current.map(s => ({...s})),
             devices:  devicesRef.current.map(d => ({...d})),
         });
-    }, [stationCount, deviceCount, networkType, vrRatio]);
+    }, [stationCount, deviceCount, networkType, vrRatio, CANVAS_W, CANVAS_H]);
 
     useEffect(() => { initSim(); }, [initSim]);
 
     // ── Simulation step ──
     const step = useCallback((rawDelta) => {
-        const {moveSpeed, appDlSize, vrBgLoad, simMult} = settingsRef.current;
+        const {moveSpeed, appDlSize, vrBgLoad, simMult, CANVAS_W, CANVAS_H} = settingsRef.current;
         const dt      = Math.min(rawDelta, 0.1) * simMult;
         const speedPx = SPEED_PX[moveSpeed];
         const stations = stationsRef.current;
@@ -560,6 +579,15 @@ export default function NetworkSimulation() {
                                         {m}x
                                     </button>
                                 ))}
+                            </div>
+                        </SettingLabel>
+
+                        <SettingLabel label="Canvas Size">
+                            <select value={canvasPreset} onChange={e => setCanvasPreset(e.target.value)} className={selectCls}>
+                                {Object.keys(CANVAS_PRESETS).map(k => <option key={k}>{k}</option>)}
+                            </select>
+                            <div className="text-xs text-gray-500 mt-1">
+                                {CANVAS_PRESETS[canvasPreset].w} × {CANVAS_PRESETS[canvasPreset].h} px
                             </div>
                         </SettingLabel>
 
